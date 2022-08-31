@@ -1,0 +1,125 @@
+print "Smooth Aimbot Module By Blue.#9889"
+
+
+
+local Players = game:GetService("Players")
+		local RunService = game:GetService("RunService")
+		local UserInputService = game:GetService("UserInputService")
+		local GuiService = game:GetService("GuiService")
+
+		local LocalPlayer = Players.LocalPlayer
+		local Mouse = LocalPlayer:GetMouse()
+		local Camera = workspace.CurrentCamera
+		local sc = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+		local Tweens = {};
+
+		local Down = false
+		local Inset = GuiService:GetGuiInset()
+
+		-- Settings
+		getgenv().Options = {
+			Enabled = true,
+			TeamCheck = false,
+			Smoothness = true,
+			AimPart = _G.Aimpart, -- Getgenv().Aiming for aimpart :)
+			FOV = 150, -- I didn't add fov
+			Smoothness = 0.05 -- 
+		}
+
+
+		-- 
+		-- Aimpart
+		getgenv().Aiming = {
+			AimPart = "Head"
+		}
+
+		-- 
+
+		-- 
+		local gc = function()
+			local nearest = math.huge
+			local nearplr
+			for i, v in pairs(game:GetService("Players"):GetPlayers()) do
+				if v ~= game:GetService("Players").LocalPlayer and v.Character and v.Character:FindFirstChild(Aiming.AimPart) then
+					if Options.TeamCheck then
+						if game:GetService("Players").LocalPlayer.Team ~= v.Team then
+							local pos = Camera:WorldToScreenPoint(v.Character[Aiming.AimPart].Position)
+							local diff = math.sqrt((pos.X - sc.X) ^ 2 + (pos.Y + Inset.Y - sc.Y) ^ 2)
+							if diff < nearest and diff < Options.FOV then
+								nearest = diff
+								nearplr = v
+							end
+						end
+					else
+						local pos = Camera:WorldToScreenPoint(v.Character[Aiming.AimPart].Position)
+						local diff = math.sqrt((pos.X - sc.X) ^ 2 + (pos.Y + Inset.Y - sc.Y) ^ 2)
+						if diff < nearest and diff < Options.FOV then
+							nearest = diff
+							nearplr = v
+						end
+					end
+				end
+			end
+			return nearplr
+		end 
+
+		function Circle()
+			local circ = Drawing.new('Circle')
+			circ.Transparency = 1
+			circ.Thickness = 1.5
+			circ.Visible = false
+			circ.Color = Color3.fromRGB(255,255,255)
+			circ.Filled = false
+			circ.NumSides = 150
+			circ.Radius = Options.FOV
+			return circ
+		end
+
+		curc = Circle()
+
+		-- Keycode
+		UserInputService.InputBegan:Connect(function( input )
+			if input.UserInputType == Enum.UserInputType.MouseButton2 then
+				Down = true
+			end
+		end)
+
+		UserInputService.InputEnded:Connect(function( input )
+			if input.UserInputType == Enum.UserInputType.MouseButton2 then
+				Down = false
+				for Index, Value in next, Tweens do 
+					Value:Cancel();
+				end;
+				Tweens = {};
+			end
+		end)
+
+		RunService.RenderStepped:Connect(function( ... )
+			if Options.Enabled then
+				if Down then
+					if gc() ~= nil and gc().Character:FindFirstChild(Aiming.AimPart) then
+						if Options.Smoothness then
+							pcall(function( ... )
+								local Info = TweenInfo.new(getgenv().Options.Smoothness,Enum.EasingStyle.Linear,Enum.EasingDirection.Out)
+								local Tween = game:GetService("TweenService"):Create(Camera,Info,{
+									CFrame = CFrame.new(Camera.CFrame.p,gc().Character[Aiming.AimPart].CFrame.p)
+								}):Play()
+
+								Tweens[Tween] = Tween;
+							end)
+						else
+							pcall(function()
+								Camera.CFrame = CFrame.new(Camera.CFrame.p,gc().Character[Aiming.AimPart].CFrame.p)
+							end)
+						end
+					end
+				end
+				curc.Visible = false
+				curc.Position = Vector2.new(Mouse.X, Mouse.Y+Inset.Y)
+				curc.Radius = Options.FOV
+			else
+				-- Remove fov (invisible anyway)
+				curc.Visible = false
+			end
+		end)
